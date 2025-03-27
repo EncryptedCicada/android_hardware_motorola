@@ -148,7 +148,7 @@ struct cirrus_playback_session {
 #endif
 
 struct pcm_config pcm_config_cirrus_rx = {
-    .channels = 8,
+    .channels = 2, // Trying with 2 channels first to see if playing silence is not working cause of this
     .rate = 48000,
     .period_size = 320,
     .period_count = 4,
@@ -163,57 +163,6 @@ uint8_t cal_ambient[4];
 
 static void* cirrus_do_calibration();
 static void* cirrus_failure_detect_thread();
-
-// DEBUG
-void list_mixer_controls(int card_num) {
-    struct mixer *mixer;
-    unsigned int count, i;
-    
-    // Open the mixer for the specified sound card
-    mixer = mixer_open(card_num);
-    if (!mixer) {
-        ALOGW("%s: Failed to open mixer for card %d\n", __func__, card_num);
-        return;
-    }
-    
-    // Get the number of controls
-    count = mixer_get_num_ctls(mixer);
-    ALOGI("%s: Card %d has %d controls\n", __func__, card_num, count);
-    
-    // Iterate through all controls
-    for (i = 0; i < count; i++) {
-        struct mixer_ctl *ctl = mixer_get_ctl(mixer, i);
-        if (ctl) {
-            const char *name = mixer_ctl_get_name(ctl);
-            enum mixer_ctl_type type = mixer_ctl_get_type(ctl);
-            
-            ALOGI("%s: %3d: %s (", __func__, i, name);
-            
-            // Print the type of control
-            switch (type) {
-                case MIXER_CTL_TYPE_BOOL:     ALOGI("%s: %3d: %s (%s)", __func__, i, name, "BOOL"); break;
-                case MIXER_CTL_TYPE_INT:      ALOGI("%s: %3d: %s (%s)", __func__, i, name, "INT"); break;
-                case MIXER_CTL_TYPE_ENUM:     ALOGI("%s: %3d: %s (%s)", __func__, i, name, "ENUM"); break;
-                case MIXER_CTL_TYPE_BYTE:     ALOGI("%s: %3d: %s (%s)", __func__, i, name, "BYTE"); break;
-                case MIXER_CTL_TYPE_IEC958:   ALOGI("%s: %3d: %s (%s)", __func__, i, name, "IEC958"); break;
-                case MIXER_CTL_TYPE_INT64:    ALOGI("%s: %3d: %s (%s)", __func__, i, name, "INT64"); break;
-                case MIXER_CTL_TYPE_UNKNOWN:  ALOGI("%s: %3d: %s (%s)", __func__, i, name, "UNKNOWN"); break;
-                default:                      ALOGI("%s: %3d: %s (%s)", __func__, i, name, "???"); break;
-            }
-            
-            // For enum types, list the available values
-            if (type == MIXER_CTL_TYPE_ENUM) {
-                unsigned int num_enums = mixer_ctl_get_num_enums(ctl);
-                for (unsigned int j = 0; j < num_enums; j++) {
-                    ALOGI("%s: Enum valid value %3d is: \"%s\"", __func__, j, mixer_ctl_get_enum_string(ctl, j));
-                }
-            }
-        }
-    }
-    
-    mixer_close(mixer);
-}
-// END DEBUG
 
 static int get_persist_value(const char* path, void* req_value) {
     FILE *file = NULL;
@@ -614,7 +563,10 @@ static int cirrus_play_silence(int seconds) {
     for (i = 0; i <= silence_cnt; i++) {
         ret = pcm_write(handle.pcm_rx, silence, frames_bytes);
         if (ret) {
-            ALOGE("%s: Cannot write PCM data: %d", __func__, ret);
+            // DEBUG: Try more verbose logging to see actual PCM subsystem error
+            // ALOGE("%s: Cannot write PCM data: %d", __func__, ret);
+            ALOGE("%s: Cannot write PCM data: %d, error: %s", __func__, 
+                ret, pcm_get_error(handle.pcm_rx));
             break;
         } else
             ALOGV("%s: Wrote PCM data", __func__);
@@ -1095,17 +1047,26 @@ static int cirrus_do_fw_mono_download(int do_reset) {
     ret = cirrus_set_force_wake(true);
     if (ret < 0) goto exit;
 
+    /* DEBUG */
+    ALOGI("%s: Trying to set Z calibration", __func__)
+
     ret = cirrus_set_mixer_array_by_name(CIRRUS_CTL_PROT_CAL_R, &handle.spkr.cal_r, 4);
     if (ret < 0) {
         ALOGE("%s: Cannot set Z calibration", __func__);
         goto exit;
     }
 
+    /* DEBUG */
+    ALOGI("%s: Trying to set calibration status", __func__)
+
     ret = cirrus_write_cal_status(&handle.spkr, 0);
     if (ret < 0) {
         ALOGE("%s: Cannot set calibration status", __func__);
         goto exit;
     }
+
+    /* DEBUG */
+    ALOGI("%s: Trying to set calibration checksum", __func__)
 
     ret = cirrus_write_cal_checksum(&handle.spkr, 0);
     if (ret < 0) {
@@ -1515,10 +1476,6 @@ static int amp_calib(UNUSED struct amplifier_device* device, void* adev) {
     memset(&cal_ambient, 0, sizeof(cal_ambient));
 
     ALOGI("%s: Initialize Cirrus Logic Playback module", __func__);
-
-    /* FIXME: DEBUG START */
-    list_mixer_controls(0);
-    /* FIXME: DEBUG END */
 
     handle.state = INIT;
 
