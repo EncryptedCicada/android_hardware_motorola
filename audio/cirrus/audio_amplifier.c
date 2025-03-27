@@ -54,7 +54,7 @@ enum cirrus_playback_state {
     PLAYBACK = 4,
 };
 
-/* Payload struct for getting calibration result from DSP module */
+/* Payload struct for getting calibration result from DSP Module */
 struct __attribute__((__packed__)) cirrus_cal_result_t {
     uint8_t status[4];
     uint8_t checksum[4];
@@ -114,23 +114,24 @@ struct cirrus_playback_session {
 // #define PERSIST_CIRRUS_CAL_SPKR_DIAG_F0_STATUS	undefined
 
 /* Mixer controls */
-// We've put anticipated mixer controls in place 
 #define CIRRUS_CTL_FORCE_WAKE		"SPK Hibernate Force Wake"
+
+#define CIRRUS_CTL_CALI_CAL_AMBIENT	"SPK DSP1X calibration cd CAL_AMBIENT" // unidentified
 #define CIRRUS_CTL_CALI_DIAG_F0		"SPK DSP1X calibration cd DIAG_F0" // unidentified
 #define CIRRUS_CTL_CALI_DIAG_F0_STATUS	"SPK DSP1X calibration cd DIAG_F0_STATUS" // unidentified
 #define CIRRUS_CTL_CALI_DIAG_Z_LOW_DIFF	"SPK DSP1X calibration cd DIAG_Z_LOW_DIFF" // unidentified
-#define CIRRUS_CTL_PROT_CAL_AMBIENT	"SPK DSP1X calibration cd CAL_AMBIENT" // unidentified
-#define CIRRUS_CTL_PROT_DIAG_F0		"SPK DSP1X calibration cd DIAG_F0" // unidentified
-#define CIRRUS_CTL_PROT_DIAG_F0_STATUS	"SPK DSP1X calibration cd DIAG_F0_STATUS" // unidentified
-#define CIRRUS_CTL_PROT_DIAG_Z_LOW_DIFF	"SPK DSP1X calibration cd DIAG_Z_LOW_DIFF" // unidentified
-#define CIRRUS_CTL_CALI_CAL_AMBIENT	"SPK DSP1X calibration cd CAL_AMBIENT" // unidentified
 #define CIRRUS_CTL_CALI_CAL_R		"SPK DSP1X calibration cd CAL_R" // unidentified
 #define CIRRUS_CTL_CALI_CAL_STATUS	"SPK DSP1X calibration cd CAL_STATUS" // unidentified
 #define CIRRUS_CTL_CALI_CAL_CHECKSUM	"SPK DSP1X calibration cd CAL_CHECKSUM" // unidentified
+
+#define CIRRUS_CTL_PROT_CAL_AMBIENT	"SPK DSP1X protection cd CAL_AMBIENT" // unidentified
+#define CIRRUS_CTL_PROT_DIAG_F0		"SPK DSP1X protection cd DIAG_F0" // unidentified
+#define CIRRUS_CTL_PROT_DIAG_F0_STATUS	"SPK DSP1X protection cd DIAG_F0_STATUS" // unidentified
+#define CIRRUS_CTL_PROT_DIAG_Z_LOW_DIFF	"SPK DSP1X protection cd DIAG_Z_LOW_DIFF" // unidentified
 #define CIRRUS_CTL_PROT_CAL_R		"SPK DSP1X protection cd CAL_R"
 #define CIRRUS_CTL_PROT_CAL_STATUS	"SPK DSP1X protection CAL_STATUS" // unidentified
-#define CIRRUS_CTL_PROT_CAL_CHECKSUM	"SPK DSP1X protection CAL_CHECKSUM" // unidentified
 #define CIRRUS_CTL_PROT_CAL_STATUS_CD	"SPK DSP1X protection cd CAL_STATUS"
+#define CIRRUS_CTL_PROT_CAL_CHECKSUM	"SPK DSP1X protection CAL_CHECKSUM" // unidentified
 #define CIRRUS_CTL_PROT_CAL_CHECKSUM_CD	"SPK DSP1X protection cd CAL_CHECKSUM"
 
 #define CIRRUS_CTL_PROT_CSPL_ERRORNO	"SPK DSP1X protection cd CSPL_ERRORNO"
@@ -316,15 +317,14 @@ static unsigned int calc_magicsum(struct cirrus_cal_result_t* cr, struct cirrus_
 }
 
 #ifndef GET_SPEAKER_CALIBRATIONS_FROM_PERSIST
-static int cirrus_cal_from_file(struct cirrus_playback_session *hdl) {
+static int cirrus_cal_from_file(struct cirrus_playback_session* hdl) {
     FILE* fp_calparams = NULL;
     struct cirrus_cal_file_t fdata;
     int ret = -EINVAL;
 
     /* Is calibration done already? */
     fp_calparams = fopen(CIRRUS_AUDIO_CAL_PATH, "rb");
-    if (fp_calparams == NULL)
-        return -EINVAL;
+    if (fp_calparams == NULL) return -EINVAL;
 
     if (fread(&fdata, sizeof(fdata), 1, fp_calparams) != 1) {
         ALOGD("%s: Failure: Unexpected calibration file content.", __func__);
@@ -332,7 +332,7 @@ static int cirrus_cal_from_file(struct cirrus_playback_session *hdl) {
         goto end;
     }
 
-    if (onecsum(&fdata.spk) != fdata.checksum) {
+    if (calc_magicsum(&fdata.spkl, &fdata.spkr) != fdata.magicsum) {
         ALOGD("%s: Failure: File checksum mismatch", __func__);
         ret = -EINVAL;
         goto end;
@@ -350,7 +350,7 @@ end:
 }
 #endif
 
-static int cirrus_save_calibration(struct cirrus_playback_session *hdl) {
+static int cirrus_save_calibration(struct cirrus_playback_session* hdl) {
     FILE* fp_calparams = NULL;
     struct cirrus_cal_file_t fdata;
     int ret = 0;
@@ -687,7 +687,7 @@ static int cirrus_mixer_wait_for_setting(char* ctl, int val, int retry) {
 
 static int cirrus_exec_fw_download(const char* fw_type, const char* channel, int do_reset) {
     char ctl_name[CIRRUS_CTL_NAME_BUF];
-    uint8_t cspl_ena[4] = { 0 };
+    uint8_t cspl_ena[4] = {0};
     int retry = 0, ret;
 
     ALOGD("%s: Asking for %s %s firmware %s", __func__, fw_type,
@@ -697,8 +697,7 @@ static int cirrus_exec_fw_download(const char* fw_type, const char* channel, int
 
     /* If this one is missing, we're not using our Cirrus codec... */
     ret = cirrus_format_mixer_name("SPK DSP Booted", channel, ctl_name, sizeof(ctl_name));
-    if (ret < 0)
-        return ret;
+    if (ret < 0) return ret;
     ret = cirrus_get_mixer_value_by_name(ctl_name);
     if (ret < 0) {
         ALOGE("%s: %s control is missing. Bailing out.", __func__, ctl_name);
@@ -770,8 +769,7 @@ static int cirrus_exec_fw_download(const char* fw_type, const char* channel, int
         ret = cirrus_format_mixer_name("SPK DSP1X calibration cd CSPL_ENABLE", channel, ctl_name, sizeof(ctl_name));
     } else {
         ret = -EINVAL;
-        ALOGE("%s: ERROR! Unsupported firmware type passed: %s",
-              __func__, fw_type);
+        ALOGE("%s: ERROR! Unsupported firmware type passed: %s", __func__, fw_type);
         goto exit;
     }
 
@@ -817,7 +815,8 @@ retry_fw:
             goto retry_fw;
         }
 
-        ALOGE("%s: Firmware download failure. CSPL Status: %u %u %u %u", __func__, cspl_ena[0], cspl_ena[1], cspl_ena[2], cspl_ena[3]);
+        ALOGE("%s: Firmware download failure. CSPL Status: %u %u %u %u", __func__, cspl_ena[0],
+              cspl_ena[1], cspl_ena[2], cspl_ena[3]);
         ret = -EINVAL;
     }
 
@@ -826,7 +825,6 @@ exit:
 }
 
 static int cirrus_mono_calibration(void) {
-    struct audio_device *adev = handle.adev_handle;
 #ifdef CIRRUS_DIAG
     struct cirrus_cal_diag_t cal_diag;
 #endif
@@ -856,13 +854,15 @@ static int cirrus_mono_calibration(void) {
         goto exit;
     }
 
-    ret = cirrus_get_mixer_array_by_name(CIRRUS_CTL_CALI_DIAG_F0_STATUS, &cal_diag.diag_f0_status, 4);
+    ret = cirrus_get_mixer_array_by_name(CIRRUS_CTL_CALI_DIAG_F0_STATUS, &cal_diag.diag_f0_status,
+                                         4);
     if (ret < 0) {
         ALOGE("%s: Cannot get %s", __func__, CIRRUS_CTL_CALI_DIAG_F0_STATUS);
         goto exit;
     }
 
-    ret = cirrus_get_mixer_array_by_name(CIRRUS_CTL_CALI_DIAG_Z_LOW_DIFF, &cal_diag.diag_z_low_diff, 4);
+    ret = cirrus_get_mixer_array_by_name(CIRRUS_CTL_CALI_DIAG_Z_LOW_DIFF, &cal_diag.diag_z_low_diff,
+                                         4);
     if (ret < 0) {
         ALOGE("%s: Cannot get %s", __func__, CIRRUS_CTL_CALI_DIAG_Z_LOW_DIFF);
         goto exit;
@@ -871,13 +871,11 @@ static int cirrus_mono_calibration(void) {
     ALOGD("%s: Diagnostics -- "
           "F0: 0x%x 0x%x 0x%x 0x%x   "
           "F0_STATUS: 0x%x 0x%x 0x%x 0x%x   "
-          "Z_LOW_DIFF: 0x%x 0x%x 0x%x 0x%x", __func__,
-          cal_diag.diag_f0[0], cal_diag.diag_f0[1],
-          cal_diag.diag_f0[2], cal_diag.diag_f0[3],
-          cal_diag.diag_f0_status[0], cal_diag.diag_f0_status[1],
-          cal_diag.diag_f0_status[2], cal_diag.diag_f0_status[3],
-          cal_diag.diag_z_low_diff[0], cal_diag.diag_z_low_diff[1],
-          cal_diag.diag_z_low_diff[2], cal_diag.diag_z_low_diff[3]);
+          "Z_LOW_DIFF: 0x%x 0x%x 0x%x 0x%x",
+          __func__, cal_diag.diag_f0[0], cal_diag.diag_f0[1], cal_diag.diag_f0[2],
+          cal_diag.diag_f0[3], cal_diag.diag_f0_status[0], cal_diag.diag_f0_status[1],
+          cal_diag.diag_f0_status[2], cal_diag.diag_f0_status[3], cal_diag.diag_z_low_diff[0],
+          cal_diag.diag_z_low_diff[1], cal_diag.diag_z_low_diff[2], cal_diag.diag_z_low_diff[3]);
 #endif
 
     ret = cirrus_get_mixer_array_by_name(CIRRUS_CTL_CALI_CAL_STATUS, &handle.spkr.status, 4);
@@ -886,11 +884,13 @@ static int cirrus_mono_calibration(void) {
         goto exit;
     }
 
-    stat_l_nok = !!(handle.spkr.status[0] | handle.spkr.status[1] |
-                   handle.spkr.status[2]);
+    stat_l_nok = !!(handle.spkr.status[0] | handle.spkr.status[1] | handle.spkr.status[2]);
     if (stat_l_nok || handle.spkr.status[3] != 1) {
-        if (!stat_l_nok && handle.spkr.status[3] == 3) ALOGE("%s: The calibration is out of range", __func__);
-        ALOGE("%s: Calibration failure, status: 0x%x 0x%x 0x%x 0x%x", __func__, handle.spkr.status[0], handle.spkr.status[1], handle.spkr.status[2], handle.spkr.status[3]);
+        if (!stat_l_nok && handle.spkr.status[3] == 3)
+            ALOGE("%s: The calibration is out of range", __func__);
+        ALOGE("%s: Calibration failure, status: 0x%x 0x%x 0x%x 0x%x", __func__,
+              handle.spkr.status[0], handle.spkr.status[1], handle.spkr.status[2],
+              handle.spkr.status[3]);
         ret = -EINVAL;
         goto exit;
     }
@@ -911,12 +911,10 @@ static int cirrus_mono_calibration(void) {
     ALOGE("%s: DEBUG! status: 0x%x 0x%x 0x%x 0x%x  "
           "csum: 0x%x 0x%x 0x%x 0x%x  "
           "Z: 0x%x 0x%x 0x%x 0x%x",
-          __func__, handle.spkr.status[0], handle.spkr.status[1],
-          handle.spkr.status[2], handle.spkr.status[3],
-          handle.spkr.checksum[0], handle.spkr.checksum[1],
-          handle.spkr.checksum[2], handle.spkr.checksum[3],
-          handle.spkr.cal_r[0], handle.spkr.cal_r[1],
-          handle.spkr.cal_r[2], handle.spkr.cal_r[3]);
+          __func__, handle.spkr.status[0], handle.spkr.status[1], handle.spkr.status[2],
+          handle.spkr.status[3], handle.spkr.checksum[0], handle.spkr.checksum[1],
+          handle.spkr.checksum[2], handle.spkr.checksum[3], handle.spkr.cal_r[0],
+          handle.spkr.cal_r[1], handle.spkr.cal_r[2], handle.spkr.cal_r[3]);
 #endif
 
     /* It HAS TO stay awake until Protection is loaded!!! */
@@ -1073,18 +1071,15 @@ exit:
 }
 
 static int cirrus_do_fw_mono_download(int do_reset) {
-    bool cal_valid = false, status_ok = false, checksum_ok = false;
     int i, max_retries = 32, ret = 0;
 
     for (i = 0; i < max_retries; i++) {
         ret = cirrus_exec_fw_download("protection", 0, do_reset);
-        if (ret == 0)
-            break;
+        if (ret == 0) break;
         usleep(500000);
     }
     if (ret != 0) {
-        ALOGE("%s: Cannot send Protection firmware: bailing out.",
-              __func__);
+        ALOGE("%s: Cannot send Protection firmware: bailing out.", __func__);
         return -EINVAL;
     }
 
@@ -1114,8 +1109,7 @@ static int cirrus_do_fw_mono_download(int do_reset) {
 
     /* Time to get some rest: work is done! */
     ret = cirrus_set_force_wake(false);
-    if (ret < 0)
-        goto exit;
+    if (ret < 0) goto exit;
 
 exit:
     ret += cirrus_play_silence(0);
@@ -1396,6 +1390,7 @@ static void* cirrus_failure_detect_thread() {
 }
 
 /* Amplifier funtions */
+
 static void cs35l41_enable_output(UNUSED struct audio_device* adev,
                                   UNUSED snd_device_t snd_device) {
     ALOGV("%s: Entry", __func__);
@@ -1515,23 +1510,24 @@ static int amp_calib(UNUSED struct amplifier_device* device, void* adev) {
 
     ALOGI("%s: Initialize Cirrus Logic Playback module", __func__);
 
+    /* FIXME: DEBUG START */
+    list_mixer_controls(0);
+    /* FIXME: DEBUG END */
+
     handle.state = INIT;
 
-    /* Ambient */
     ret = get_persist_value(PERSIST_CIRRUS_CAL_GLOBAL_CAL_AMBIENT, &cal_ambient);
-    if (!ret)
-        return;
 
 #ifdef GET_SPEAKER_CALIBRATIONS_FROM_PERSIST
     /* Speaker LEFT */
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_R, &handle.spkl.cal_r, true);
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_STATUS, &handle.spkl.status, true);
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_CHECKSUM, &handle.spkl.checksum, true);
+    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_R, &handle.spkl.cal_r);
+    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_STATUS, &handle.spkl.status);
+    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_CHECKSUM, &handle.spkl.checksum);
 
     /* Speaker RIGHT */
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_R, &handle.spkr.cal_r, true);
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_STATUS, &handle.spkr.status, true);
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_CHECKSUM, &handle.spkr.checksum, true);
+    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_R, &handle.spkr.cal_r);
+    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_STATUS, &handle.spkr.status);
+    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_CHECKSUM, &handle.spkr.checksum);
 
     handle.spkl.cal_ok = true;
     handle.spkr.cal_ok = true;
