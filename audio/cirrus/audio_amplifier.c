@@ -1048,7 +1048,7 @@ static int cirrus_do_fw_mono_download(int do_reset) {
     if (ret < 0) goto exit;
 
     /* DEBUG */
-    ALOGI("%s: Trying to set Z calibration", __func__)
+    ALOGI("%s: Trying to set Z calibration", __func__);
 
     ret = cirrus_set_mixer_array_by_name(CIRRUS_CTL_PROT_CAL_R, &handle.spkr.cal_r, 4);
     if (ret < 0) {
@@ -1057,7 +1057,7 @@ static int cirrus_do_fw_mono_download(int do_reset) {
     }
 
     /* DEBUG */
-    ALOGI("%s: Trying to set calibration status", __func__)
+    ALOGI("%s: Trying to set calibration status", __func__);
 
     ret = cirrus_write_cal_status(&handle.spkr, 0);
     if (ret < 0) {
@@ -1066,7 +1066,7 @@ static int cirrus_do_fw_mono_download(int do_reset) {
     }
 
     /* DEBUG */
-    ALOGI("%s: Trying to set calibration checksum", __func__)
+    ALOGI("%s: Trying to set calibration checksum", __func__);
 
     ret = cirrus_write_cal_checksum(&handle.spkr, 0);
     if (ret < 0) {
