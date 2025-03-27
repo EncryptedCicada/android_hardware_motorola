@@ -1034,11 +1034,14 @@ static int cirrus_write_cal_checksum(struct cirrus_cal_result_t* cal, char* lr) 
     char ctl_name[CIRRUS_CTL_NAME_BUF];
     int ret;
 
+    /* DEBUG: Motorola does not have this mixer. Try and see what disabling this does */
+    /* //disable start
     ret = cirrus_format_mixer_name(CIRRUS_CTL_PROT_CAL_CHECKSUM, lr, ctl_name, sizeof(ctl_name));
     if (ret < 0) return ret;
 
     ret = cirrus_set_mixer_array_by_name(ctl_name, cal->checksum, 4);
     if (ret >= 0) goto exit;
+    */ // disable end
 
     /*
      * On some firmwares the creativity level is high and the mixer
@@ -1056,11 +1059,14 @@ static int cirrus_write_cal_status(struct cirrus_cal_result_t* cal, char* lr) {
     char ctl_name[CIRRUS_CTL_NAME_BUF];
     int ret;
 
+    /* DEBUG: Motorola does not have this mixer. Try and see what disabling this does */
+    /* //disable start
     ret = cirrus_format_mixer_name(CIRRUS_CTL_PROT_CAL_STATUS, lr, ctl_name, sizeof(ctl_name));
     if (ret < 0) return ret;
 
     ret = cirrus_set_mixer_array_by_name(ctl_name, cal->status, 4);
     if (ret >= 0) goto exit;
+    */ // disable end
 
     ret = cirrus_format_mixer_name(CIRRUS_CTL_PROT_CAL_STATUS_CD, lr, ctl_name, sizeof(ctl_name));
     if (ret < 0) return ret;
@@ -1516,18 +1522,25 @@ static int amp_calib(UNUSED struct amplifier_device* device, void* adev) {
 
     handle.state = INIT;
 
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_GLOBAL_CAL_AMBIENT, &cal_ambient);
+    /* DEBUG Start: Hardcode since sepolicy does not allow reading from persist for now */
+    // ret = get_persist_value(PERSIST_CIRRUS_CAL_GLOBAL_CAL_AMBIENT, &cal_ambient);
+    cal_ambient = {28, 0, 0, 0};
+    /* DEBUG End */
 
 #ifdef GET_SPEAKER_CALIBRATIONS_FROM_PERSIST
     /* Speaker LEFT */
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_R, &handle.spkl.cal_r);
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_STATUS, &handle.spkl.status);
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_CHECKSUM, &handle.spkl.checksum);
+    /* DEBUG Start: Hardcode since sepolicy does not allow reading from persist for now */
+    // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_R, &handle.spkl.cal_r);
+    // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_STATUS, &handle.spkl.status);
+    // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_CHECKSUM, &handle.spkl.checksum);
+    handle.spkl.cal_r = {78, 34, 0, 0};
 
     /* Speaker RIGHT */
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_R, &handle.spkr.cal_r);
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_STATUS, &handle.spkr.status);
-    ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_CHECKSUM, &handle.spkr.checksum);
+    // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_R, &handle.spkr.cal_r);
+    // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_STATUS, &handle.spkr.status);
+    // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_CHECKSUM, &handle.spkr.checksum);
+    handle.spkr.cal_r = {78, 34, 0, 0};
+    /* DEBUG End */
 
     handle.spkl.cal_ok = true;
     handle.spkr.cal_ok = true;
