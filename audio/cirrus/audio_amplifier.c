@@ -1524,7 +1524,10 @@ static int amp_calib(UNUSED struct amplifier_device* device, void* adev) {
 
     /* DEBUG Start: Hardcode since sepolicy does not allow reading from persist for now */
     // ret = get_persist_value(PERSIST_CIRRUS_CAL_GLOBAL_CAL_AMBIENT, &cal_ambient);
-    cal_ambient = {28, 0, 0, 0};
+    cal_ambient[0] = 28;
+    cal_ambient[1] = 0;
+    cal_ambient[2] = 0;
+    cal_ambient[3] = 0;
     /* DEBUG End */
 
 #ifdef GET_SPEAKER_CALIBRATIONS_FROM_PERSIST
@@ -1533,13 +1536,19 @@ static int amp_calib(UNUSED struct amplifier_device* device, void* adev) {
     // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_R, &handle.spkl.cal_r);
     // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_STATUS, &handle.spkl.status);
     // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKL_CAL_CHECKSUM, &handle.spkl.checksum);
-    handle.spkl.cal_r = {78, 34, 0, 0};
+    handle.spkl.cal_r[0] = 78;
+    handle.spkl.cal_r[1] = 34;
+    handle.spkl.cal_r[2] = 0;
+    handle.spkl.cal_r[3] = 0;
 
     /* Speaker RIGHT */
     // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_R, &handle.spkr.cal_r);
     // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_STATUS, &handle.spkr.status);
     // ret = get_persist_value(PERSIST_CIRRUS_CAL_SPKR_CAL_CHECKSUM, &handle.spkr.checksum);
-    handle.spkr.cal_r = {78, 34, 0, 0};
+    handle.spkr.cal_r[0] = 78;
+    handle.spkr.cal_r[1] = 34;
+    handle.spkr.cal_r[2] = 0;
+    handle.spkr.cal_r[3] = 0;
     /* DEBUG End */
 
     handle.spkl.cal_ok = true;
