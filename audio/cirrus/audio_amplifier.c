@@ -675,7 +675,7 @@ static int cirrus_play_silence(int seconds) {
     uc_info_rx->in_snd_device = SND_DEVICE_NONE;
     uc_info_rx->stream.out = adev->primary_output;
     list_init(&uc_info_rx->device_list);
-    uc_info_rx->out_snd_device = SND_DEVICE_OUT_SPEAKER_PROTECTED;
+    uc_info_rx->out_snd_device = SND_DEVICE_OUT_SPEAKER;
     list_add_tail(&adev->usecase_list, &uc_info_rx->list);
 
     platform_check_and_set_codec_backend_cfg(adev, uc_info_rx, uc_info_rx->out_snd_device);
